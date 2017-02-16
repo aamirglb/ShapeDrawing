@@ -12,6 +12,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    this->setWindowTitle("Draw Shapes");
+
     qApp->installEventFilter(this);
     drawMode = false;
 
@@ -21,9 +24,8 @@ MainWindow::MainWindow(QWidget *parent) :
                   <<  "gold" <<  "gray" <<  "green" <<  "lime" <<  "magenta" <<  "maroon"
                   <<  "navy" <<  "olive" <<  "orange" <<  "pink" <<  "red" <<  "white"
                   <<  "yellow";
-    ui->colorCombo->insertItems(0, drawingColors);
-    ui->brushColorCombo->insertItems(0, drawingColors);
 
+    // Populate the colorToQColor map with different colors
     for(QString name : drawingColors)
         colorNamesMap[name] = QColor(name);
 
@@ -31,8 +33,8 @@ MainWindow::MainWindow(QWidget *parent) :
     brushStyleStr << "No Brush" << "Solid Pattern" << "Dense-1 Pattern" << "Dense-2"
                << "Dense-3" << "Dense-4" << "Dense-5" << "Dense-6" << "Dense-7"
                << "Horizontal" << "Vertical" << "Cross" << "BDiag" << "FDiag" << "DiagCross";
-    ui->brushCombo->insertItems(0, brushStyleStr);
 
+    // Populate Brush-Style to QString map
     brushStyle["No Brush"] = Qt::NoBrush;
     brushStyle["Solid Pattern"] = Qt::SolidPattern;
     brushStyle["Dense-1 Pattern"] = Qt::Dense1Pattern;
@@ -49,9 +51,12 @@ MainWindow::MainWindow(QWidget *parent) :
     brushStyle["FDiag"] = Qt::FDiagPattern;
     brushStyle["DiagCross"] = Qt::DiagCrossPattern;
 
-    currentColor = QColor("blue");
-    currentBrush.setColor(Qt::red);
+    // Populate the UI with different colors and brush style
+    ui->colorCombo->insertItems(0, drawingColors);
+    ui->brushColorCombo->insertItems(0, drawingColors);
+    ui->brushCombo->insertItems(0, brushStyleStr);
 
+    // Connect UI buttons to slots
     connect(ui->drawModeBtn, SIGNAL(clicked(bool)), this, SLOT(drawModeClicked()));
     connect(ui->clearShapes, SIGNAL(clicked(bool)), this, SLOT(clearShapes()));
     connect(ui->saveBtn, SIGNAL(clicked(bool)), this, SLOT(saveToXml()));
@@ -62,7 +67,6 @@ MainWindow::MainWindow(QWidget *parent) :
         currentColor = color; });
 
     connect(ui->brushCombo, &QComboBox::currentTextChanged, [=](QString brush){
-        //currentBrush = brush;
         currentBrush.setStyle(brushStyle[brush]);});
 
     connect(ui->brushColorCombo, &QComboBox::currentTextChanged, [=](QString brushColor){
@@ -75,6 +79,11 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->brushColorCombo->setCurrentText("red");
 }
 
+///
+/// \brief MainWindow::drawModeClicked
+///        Slot which gets fired when Draw Mode button is clicked on the GUI
+///        Toggles Enable and Disable draw mode upon button click
+///
 void MainWindow::drawModeClicked()
 {
     if( !drawMode ) {
@@ -97,6 +106,12 @@ void MainWindow::drawModeClicked()
     }
 }
 
+///
+/// \brief MainWindow::eventFilter
+/// \param obj
+/// \param event
+/// \return
+///
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
     Q_UNUSED(obj);
@@ -109,6 +124,10 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     return false;
 }
 
+///
+/// \brief MainWindow::mousePressEvent
+/// \param event
+///
 void MainWindow::mousePressEvent(QMouseEvent *event)
 {
     QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
@@ -136,6 +155,11 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
     }
 }
 
+///
+/// \brief MainWindow::clearShapes
+///        Clear the internal data structure and refresh the window
+///        This has an effect of clearing all the drawings from the window
+///
 void MainWindow::clearShapes()
 {
     m_shapes.clear();
@@ -143,6 +167,20 @@ void MainWindow::clearShapes()
     update();
 }
 
+///
+/// \brief MainWindow::saveToXml
+///        Save the current drawing to an xml file.
+///        The format of the xml file is as follows
+///  <shapes>
+///     <shape TotalPoints="3" DrawColor="gray" BrushStyle="Dense-7" BrushColor="green">
+///         <point X="136" Y="139"/>
+///         <point X="26" Y="349"/>
+///         <point X="267" Y="356"/>
+///     </shape>
+///  </shapes>
+///
+
+/// TODO: Instead of hardcoding the filename, ask user for a filename
 void MainWindow::saveToXml()
 {
     QFile file("shapes.xml");
@@ -180,13 +218,14 @@ void MainWindow::saveToXml()
             writer.writeAttribute("Y", QString::number(shape.m_points[i].y()));
             writer.writeEndElement();
         }
-
         writer.writeEndElement(); // shape
     }
-
     writer.writeEndDocument();
 }
 
+///
+/// \brief MainWindow::loadFromXml
+///        Load the shapes from the xml file
 void MainWindow::loadFromXml()
 {
     QFile file("shapes.xml");
@@ -220,28 +259,14 @@ void MainWindow::loadFromXml()
 
                 /// Let's get the attributes for person */
                 QXmlStreamAttributes attributes = reader.attributes();
-                /* Let's check that person has id attribute. */
-                if(attributes.hasAttribute("TotalPoints"))
-                {
-                    totalPoints = attributes.value("TotalPoints").toInt();
-                }
-                if(attributes.hasAttribute("DrawColor"))
-                {
-                    drawColor = attributes.value("DrawColor").toString();
-                    //qDebug()<<"DrawColor:"<<drawColor;
-                }
 
-                if(attributes.hasAttribute("BrushStyle"))
-                {
-                    brushSty = attributes.value("BrushStyle").toString();
-                    //qDebug() << "BrushStyle: " << brushSty;
-                }
+                totalPoints = attributes.value("TotalPoints").toInt();
+                drawColor = attributes.value("DrawColor").toString();
+                brushSty = attributes.value("BrushStyle").toString();
+                brushColor = attributes.value("BrushColor").toString();
 
-                if(attributes.hasAttribute("BrushColor"))
-                {
-                    brushColor = attributes.value("BrushColor").toString();
-                    //qDebug() << "BrushColor: " << brushColor;
-                }
+                qDebug() << "Draw Color: " << drawColor;
+                qDebug() << "Brush Color: " << brushColor;
 
                 for(int i = 0; i < totalPoints; ++i)
                 {
@@ -260,23 +285,36 @@ void MainWindow::loadFromXml()
                         }
                     }
                 } // end of for
+
                 // insert the shape in the list
                 Shape shape(points, colorNamesMap[drawColor], brushStyle[brushSty], colorNamesMap[brushColor]);
                 m_shapes.append(shape);
             } // end of if(shape)
         }
     }
+
+    // Update the screen
     update();
 }
 
+///
+/// \brief MainWindow::drawShapes
+///        Using QPainter draw shapes on the window
+///
+/// \param pointList
+/// \param color
+/// \param brush
+/// \param painter
+///
 void MainWindow::drawShapes(const QList<QPointF> &pointList, QColor color,
-                            QBrush brush, QPainter *painter)
+                            QBrush brush, QColor brushColor, QPainter *painter)
 {
     painter->setPen(color);
+    brush.setColor(brushColor);
     painter->setBrush(brush);
 
     /// Depending on number of points in the shape either use drawPolygon
-    /// or drawLine ordrawPoint call
+    /// or drawLine or drawPoint call
     if( pointList.length() > 2 )
     {
         QPointF points[pointList.length()];
@@ -294,6 +332,11 @@ void MainWindow::drawShapes(const QList<QPointF> &pointList, QColor color,
     }
 }
 
+///
+/// \brief MainWindow::paintEvent
+///        Reimplement the paintEvent to draw the shapes
+/// \param event
+///
 void MainWindow::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
@@ -305,7 +348,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
     for(int shapeCount = 0; shapeCount < m_shapes.length(); ++shapeCount)
     {
         Shape shape = m_shapes[shapeCount];
-        drawShapes(shape.m_points, shape.m_drawColor, shape.m_brush, &painter);
+        drawShapes(shape.m_points, shape.m_drawColor, shape.m_brush, shape.m_brushColor, &painter);
     }
 
     // Draw current shape

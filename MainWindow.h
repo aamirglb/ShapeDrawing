@@ -24,7 +24,7 @@ public:
     void mousePressEvent(QMouseEvent *event);
     void paintEvent(QPaintEvent* event);
     void drawShapes(const QList<QPointF> &pointList, QColor color,
-                    QBrush brush, QPainter *painter);
+                    QBrush brush, QColor brushColor, QPainter *painter);
     ~MainWindow();
 
 public slots:
@@ -35,9 +35,12 @@ public slots:
 
 private:
     Ui::MainWindow *ui;
-    bool drawMode; // set to true to enable drawing
+    /// set to true to enable drawing
+    bool drawMode;
+
+    /// Mouse click for the current shapes
     QList<QPointF> m_clickPositions;
-    //QVector<QList<QPointF>> m_shaps;
+
     QColor currentColor;
     QBrush currentBrush;
     QColor currentBrushColor;
