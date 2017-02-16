@@ -4,6 +4,9 @@
 #include <QDebug>
 #include <Shapes.h>
 
+#include <QXmlStreamReader>
+#include <QXmlStreamWriter>
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -20,6 +23,9 @@ MainWindow::MainWindow(QWidget *parent) :
                   <<  "yellow";
     ui->colorCombo->insertItems(0, drawingColors);
     ui->brushColorCombo->insertItems(0, drawingColors);
+
+    for(QString name : drawingColors)
+        colorNamesMap[name] = QColor(name);
 
     QStringList brushStyleStr;
     brushStyleStr << "No Brush" << "Solid Pattern" << "Dense-1 Pattern" << "Dense-2"
@@ -48,6 +54,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->drawModeBtn, SIGNAL(clicked(bool)), this, SLOT(drawModeClicked()));
     connect(ui->clearShapes, SIGNAL(clicked(bool)), this, SLOT(clearShapes()));
+    connect(ui->saveBtn, SIGNAL(clicked(bool)), this, SLOT(saveToXml()));
+    connect(ui->loadBtn, SIGNAL(clicked(bool)), this, SLOT(loadFromXml()));
 
     // New style signal slot
     connect(ui->colorCombo, &QComboBox::currentTextChanged, [=](QString color){
@@ -132,6 +140,132 @@ void MainWindow::clearShapes()
 {
     m_shapes.clear();
     m_clickPositions.clear();
+    update();
+}
+
+void MainWindow::saveToXml()
+{
+    QFile file("shapes.xml");
+    if( !file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        qDebug() << "File to open file";
+        return;
+    }
+
+    QXmlStreamWriter writer(&file);
+    writer.setAutoFormatting(true);
+    writer.writeStartDocument();
+
+    writer.writeStartElement("shapes");
+
+    // For each shape write TotalPoints, DrawColor, BrushStyle and BrushColor
+    for(int shapeCount = 0; shapeCount < m_shapes.length(); ++shapeCount)
+    {
+        Shape shape = m_shapes[shapeCount];
+        QString brushSty = brushStyle.key(shape.m_brush.style());
+        QString brushColor = colorNamesMap.key(shape.m_brushColor);
+        QString drawColor = colorNamesMap.key(shape.m_drawColor);
+        //drawShapes(shape.m_points, shape.m_drawColor, shape.m_brush, &painter);
+
+        writer.writeStartElement("shape");
+        writer.writeAttribute("TotalPoints", QString::number(shape.m_points.length()));
+        writer.writeAttribute("DrawColor", drawColor);
+        writer.writeAttribute("BrushStyle", brushSty);
+        writer.writeAttribute("BrushColor", brushColor);
+
+        for(int i = 0; i < shape.m_points.length(); ++i)
+        {
+            writer.writeStartElement("point");
+            writer.writeAttribute("X", QString::number(shape.m_points[i].x()));
+            writer.writeAttribute("Y", QString::number(shape.m_points[i].y()));
+            writer.writeEndElement();
+        }
+
+        writer.writeEndElement(); // shape
+    }
+
+    writer.writeEndDocument();
+}
+
+void MainWindow::loadFromXml()
+{
+    QFile file("shapes.xml");
+    if( !file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        qDebug() << "File to open file";
+        return;
+    }
+
+    QXmlStreamReader reader(&file);
+
+    while(!reader.atEnd() &&  !reader.hasError()) {
+        /// Read next element
+        QXmlStreamReader::TokenType token = reader.readNext();
+
+        if(token == QXmlStreamReader::StartDocument) {
+            continue;
+        }
+
+        /// If token is StartElement, we'll see if we can read it.
+        if(token == QXmlStreamReader::StartElement)
+        {
+            /// If it is a shape
+            if(reader.name() == "shape")
+            {
+                QString brushSty;
+                QString brushColor;
+                QString drawColor;
+                int totalPoints = 0;
+                QList<QPointF> points;
+
+                /// Let's get the attributes for person */
+                QXmlStreamAttributes attributes = reader.attributes();
+                /* Let's check that person has id attribute. */
+                if(attributes.hasAttribute("TotalPoints"))
+                {
+                    totalPoints = attributes.value("TotalPoints").toInt();
+                }
+                if(attributes.hasAttribute("DrawColor"))
+                {
+                    drawColor = attributes.value("DrawColor").toString();
+                    //qDebug()<<"DrawColor:"<<drawColor;
+                }
+
+                if(attributes.hasAttribute("BrushStyle"))
+                {
+                    brushSty = attributes.value("BrushStyle").toString();
+                    //qDebug() << "BrushStyle: " << brushSty;
+                }
+
+                if(attributes.hasAttribute("BrushColor"))
+                {
+                    brushColor = attributes.value("BrushColor").toString();
+                    //qDebug() << "BrushColor: " << brushColor;
+                }
+
+                for(int i = 0; i < totalPoints; ++i)
+                {
+                    while(reader.readNextStartElement())
+                    {
+                        if(reader.name() == "point"){
+                            QXmlStreamAttributes attributes = reader.attributes();
+                            float x = attributes.value("X").toFloat();
+                            float y = attributes.value("Y").toFloat();
+                            points.append(QPointF(x, y));
+                        }
+                        else
+                        {
+                            reader.skipCurrentElement();
+                            qDebug() << "Skipping element";
+                        }
+                    }
+                } // end of for
+                // insert the shape in the list
+                Shape shape(points, colorNamesMap[drawColor], brushStyle[brushSty], colorNamesMap[brushColor]);
+                m_shapes.append(shape);
+            } // end of if(shape)
+        }
+    }
     update();
 }
 

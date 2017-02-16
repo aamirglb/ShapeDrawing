@@ -30,6 +30,8 @@ public:
 public slots:
     void drawModeClicked();
     void clearShapes();
+    void saveToXml();
+    void loadFromXml();
 
 private:
     Ui::MainWindow *ui;
@@ -42,6 +44,7 @@ private:
     QVector<Shape> m_shapes;
 
     QMap<QString,  Qt::BrushStyle> brushStyle;
+    QMap<QString, QColor> colorNamesMap;
 };
 
 #endif // MAINWINDOW_H
