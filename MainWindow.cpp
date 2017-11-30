@@ -317,7 +317,13 @@ void MainWindow::drawShapes(const QList<QPointF> &pointList, QColor color,
     /// or drawLine or drawPoint call
     if( pointList.length() > 2 )
     {
+#ifdef __GNUC__
+        // Under MSVC 2015, below code causes the error
+        //  array type is not assignable
         QPointF points[pointList.length()];
+#else
+        QPointF *points = new QPointF[pointList.length()];
+#endif
         for(int i = 0; i < pointList.length(); ++i)
             points[i] = pointList[i];
 
@@ -360,7 +366,14 @@ void MainWindow::paintEvent(QPaintEvent *event)
     {
         if(m_clickPositions.length() > 2 )
         {
+
+#ifdef __GNUC__
+            // Under MSVC 2015, below code causes the error
+            //  array type is not assignable
             QPointF points[m_clickPositions.length()];
+#else
+            QPointF *points = new QPointF[m_clickPositions.length()];
+#endif
             for(int i = 0; i < m_clickPositions.length(); ++i)
                 points[i] = m_clickPositions[i];
 
